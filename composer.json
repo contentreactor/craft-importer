@@ -1,0 +1,54 @@
+{
+	"name": "contentreactor/craft-importer",
+	"description": "Data importer for Craft CMS",
+	"type": "craft-plugin",
+	"license": "mit",
+	"support": {
+		"email": "support@contentreactor.com",
+		"issues": "https://github.com/contentreactor/craft-importer/issues?state=open",
+		"source": "https://github.com/contentreactor/craft-importer",
+		"docs": "https://github.com/contentreactor/craft-importer",
+		"rss": "https://github.com/contentreactor/craft-importer/releases.atom"
+	},
+	"require": {
+		"craftcms/cms": ">3.9.0",
+		"box/spout": "^3.0",
+		"nystudio107/craft-code-field": "^4",
+		"axp-dev/file-parser": "^2.3",
+		"cakephp/utility": "^3.9",
+		"league/csv": "^9.23"
+	},
+	"version": "1.0.0",
+	"require-dev": {
+		"friendsofphp/php-cs-fixer": "^3.54",
+		"developion/coding-standards": "^1.1",
+		"phpstan/phpstan-strict-rules": "^2.0",
+		"fakerphp/faker": "^1.23",
+		"marcusgaius/phpstan": "^1.0",
+		"markhuot/craft-pest": "^2.0"
+	},
+	"autoload": {
+		"psr-4": {
+			"ContentReactor\\Importer\\": "src/"
+		}
+	},
+	"scripts": {
+		"phpstan": "phpstan analyze --memory-limit=1G",
+		"check-cs": "php-cs-fixer check --diff --ansi --using-cache=no",
+		"fix-cs": "php-cs-fixer fix --diff --ansi --using-cache=no"
+	},
+	"extra": {
+		"handle": "craft-importer",
+		"name": "Importer",
+		"developer": "ContentReactor",
+		"documentationUrl": "https://github.com/contentreactor/craft-importer"
+	},
+	"config": {
+		"sort-packages": true,
+		"allow-plugins": {
+			"craftcms/plugin-installer": true,
+			"pestphp/pest-plugin": true,
+			"yiisoft/yii2-composer": true
+		}
+	}
+}

@@ -1,0 +1,10 @@
+/.env
+/.idea
+/.vscode/
+/vendor
+.phpactor.*
+.php-cs-fixer.cache
+.DS_Store
+phpunit.xml.bak
+/.phpunit.cache
+/composer.lock

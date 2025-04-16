@@ -1,0 +1,30 @@
+{% import "_includes/links.twig" as links %}
+{% import "_includes/forms.twig" as forms %}
+
+<form class="importer-form" method="post" enctype="multipart/form-data">
+	{{ actionInput('craft-importer/imports/type-upload') }}
+	{{ csrfInput() }}
+	{{ forms.fileField({
+		label: 'Upload a file' | t('app'),
+		class: 'cs-support-attachment',
+		name: 'constructions',
+	}) }}
+	{{ forms.selectField({
+		label: 'Select importer type',
+		name: 'importer',
+		options: craft.importer.getImporterTypes(),
+	}) }}
+	<hr>
+{#	{{ forms.editableTableField({#}
+
+{#	}) }}#}
+	<hr>
+	<div class="buttons">
+		<div class="btngroup">
+			{{ forms.submitButton({label: 'Submit' | t('app'), spinner: true}) }}
+		</div>
+		<div class="spinner hidden"></div>
+	</div>
+</form>
+
+<div class="importer hidden"></div>
