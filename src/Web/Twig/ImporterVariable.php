@@ -5,6 +5,7 @@ namespace ContentReactor\Importer\Web\Twig;
 
 use ContentReactor\Importer\Contracts\Importers\ImporterInterface;
 use ContentReactor\Importer\Plugin;
+use craft\helpers\FileHelper;
 use ReflectionClass;
 
 class ImporterVariable
@@ -21,5 +22,10 @@ class ImporterVariable
 			],
 			Plugin::getInstance()->getImports()->getImporterTypes(),
 		);
+	}
+
+	public function isWritable(string $path): bool
+	{
+		return FileHelper::isWritable($path);
 	}
 }

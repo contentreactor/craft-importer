@@ -16,7 +16,7 @@
 		"nystudio107/craft-code-field": "^4",
 		"axp-dev/file-parser": "^2.3",
 		"cakephp/utility": "^3.9",
-		"league/csv": "^9.23"
+		"league/csv": "^8.2"
 	},
 	"version": "1.0.0",
 	"require-dev": {
