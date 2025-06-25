@@ -40,8 +40,6 @@ class Plugin extends BasePlugin
 {
 	use Services;
 
-	//public bool $hasCpSettings = true;
-
 	/**
 	 * @return array{
 	 *     components: array<string, class-string>

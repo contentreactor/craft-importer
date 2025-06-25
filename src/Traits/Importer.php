@@ -3,6 +3,9 @@ declare(strict_types=1);
 
 namespace ContentReactor\Importer\Traits;
 
+use ContentReactor\Importer\Contracts\Importers\ImporterInterface;
+use craft\errors\ElementNotFoundException;
+use craft\errors\FileException;
 use ContentReactor\Importer\Base\{
 	FoundStrategy,
 	ImporterType,
@@ -19,50 +22,55 @@ use craft\models\{
 	Section,
 };
 use Illuminate\Support\Collection;
+use Throwable;
+use yii\base\Exception;
 use yii\base\InvalidConfigException;
 
 trait Importer
 {
 	/**
-	 * @param string|Section $section  Section where the stored content is being saved
-	 * @param string|EntryType $entryType  Entry Type within the where the stored content is being saved. If left empty, the first type of the Section is used
-	 * @param string|ImporterType $importerType  Specifies the type of source. The available options are:
+	 * @param string|Section          $section Section where the stored content is being saved
+	 * @param string|EntryType        $entryType Entry Type where the stored content is being saved. If left empty, the first type of the Section is used
+	 * @param string|ImporterType     $importerType Specifies the type of source. The available options are:
 	 *
 	 *  - `fileImporter` - The [[$filePath]] expects a local file path
 	 *  - `urlImporter` - The [[$filePath]] expects a remote url. This is the default option
 	 *  - `uploadImporter` - This option is used in the background for dashboard uploads
 	 *
 	 * Each of the listed options can be referenced by a case of ImporterType enum
-	 * @param string $filePath A path/url of the imported file. The value must always be an absolute path. Aliases can be used
-	 * @param string $fileType Valid MIME type of the imported file. Allowed types are:
+	 * @param string                  $filePath A path/url of the imported file. The value must always be an absolute path. Aliases can be used
+	 * @param string                  $fileType Valid MIME type of the imported file. Allowed types are:
 	 *
 	 *  - \ContentReactor\Importer\Services\Imports::FILE_JSON
 	 *  - \ContentReactor\Importer\Services\Imports::FILE_XML
 	 *  - \ContentReactor\Importer\Services\Imports::FILE_CSV
 	 *  - \ContentReactor\Importer\Services\Imports::FILE_XLS
-	 * @param string $dataPath Defines the dot-separated path to the content within the parsed data, eg. 'rss.channel.item', 'data.content'.
+	 * @param string                  $dataPath Defines the dot-separated path to the content within the parsed data, eg. 'rss.channel.item', 'data.content'.
 	 *
 	 * If left empty, it assumes the content is in the root of the file
 	 *
-	 * @param string|FoundStrategy $foundStrategy Specifies the way to handle matched elements. The available options are:
+	 * @param string|FoundStrategy    $foundStrategy Specifies the way to handle matched elements. The available options are:
 	 *
 	 *  - `overwrite` - If found, updates the contents of the element. This is the default option
 	 *  - `skip` - If found, element is left untouched
 	 *
 	 *   Each of the listed options can be referenced by a case of FoundStrategy enum
-	 * @param string|NotFoundStrategy $notFoundStrategy Specifies the type of source. The available options are:
+	 * @param string|NotFoundStrategy $notFoundStrategy Specifies how to handle the elements not found in the imported data. The available options are:
 	 *
 	 *  - `ignore` - Doesn't check for missing elements. This is the default option
 	 *  - `disable` - If an existing element doesn't match to any newly imported ones, it is disabled.
 	 *  - `delete` - If an existing element doesn't match to any newly imported ones, it is deleted.
 	 *
 	 *   Each of the listed options can be referenced by a case of NotFoundStrategy enum
-	 * @param string $primaryKey Defines the handle of the saved elements which is used to match the existing content
-	 * @param string $primaryKeyValue Defines the dot-separated array key in individual data items which is used with [[$primaryKey]] to match the existing content
-	 * @param string $slugKey Defines the dot-separated array key in individual data items which will be used for the slug of the saved element
-	 * @param string $titleKey Defines the dot-separated array key in individual data items which will be used for the title of the saved element
-	 * @param string $field Defines the handle of the field where the contents are stored. If left empty, it uses the globally configured field
+	 * @param string                  $primaryKey Defines the attribute or field handle of the saved elements which is used to match the existing content
+	 * @param string                  $primaryKeyValue Defines the dot-separated array key in individual data items which is used with [[$primaryKey]] to match the existing content
+	 * @param string                  $slugKey Defines the dot-separated array key in individual data items which will be used for the slug of the saved element
+	 * @param string                  $titleKey Defines the dot-separated array key in individual data items which will be used for the title of the saved element
+	 * @param string                  $field Defines the handle of the field where the contents are stored. If left empty, it uses the globally configured field
+	 * @throws ElementNotFoundException
+	 * @throws Exception
 	 * @throws InvalidConfigException
+	 * @throws Throwable
 	 */
 	public function __construct(
 		private readonly string|Section          $section,
@@ -87,15 +95,24 @@ trait Importer
 		$this->applyNotFoundStrategy();
 	}
 
-	public function applyNotFoundStrategy(): void
+	/**
+	 * Handles the selected `NotFoundStrategy`, that is what happens with the elements in section that aren't found in the imports.
+	 *
+	 * @return void
+	 * @throws Throwable
+	 * @throws ElementNotFoundException
+	 * @throws Exception
+	 */
+	final protected function applyNotFoundStrategy(): void
 	{
 		switch ($this->getNotFoundStrategy()) {
 			case NotFoundStrategy::DISABLE:
 				Plugin::getInstance()->getImports()->findMissing($this)
 					->each(static function (Element $element): void {
 						$element->setEnabledForSite(false);
-						Craft::$app->getElements()->saveElement($element);
-						Craft::info("disabled $element->title.", 'craft-importer::disable-element');
+						if (Craft::$app->getElements()->saveElement($element)) {
+							Craft::info("disabled $element->title.", 'craft-importer::disable-element');
+						}
 					});
 				break;
 			case NotFoundStrategy::DELETE:
@@ -111,6 +128,7 @@ trait Importer
 		}
 	}
 
+	/** @inheritDoc */
 	public function getSection(): Section
 	{
 		if ($this->section instanceof Section) {
@@ -121,6 +139,7 @@ trait Importer
 			->getSectionByHandle($this->section);
 	}
 
+	/** @inheritDoc */
 	public function getEntryType(): EntryType
 	{
 		if ($this->entryType instanceof EntryType) {
@@ -173,6 +192,12 @@ trait Importer
 		return ImporterType::from($this->importerType);
 	}
 
+	/**
+	 * Returns how the matched elements are handled
+	 * @return FoundStrategy
+	 * @see FoundStrategy::OVERWRITE
+	 * @see FoundStrategy::SKIP
+	 */
 	public function getFoundStrategy(): FoundStrategy
 	{
 		$strategy = $this->foundStrategy;
@@ -181,6 +206,14 @@ trait Importer
 		return FoundStrategy::from($this->foundStrategy);
 	}
 
+	/**
+	 * Returns how to handle the elements not found in the imported data
+	 *
+	 * @return NotFoundStrategy
+	 * @see NotFoundStrategy::IGNORE Default option
+	 * @see NotFoundStrategy::DISABLE
+	 * @see NotFoundStrategy::DELETE
+	 */
 	public function getNotFoundStrategy(): NotFoundStrategy
 	{
 		$strategy = $this->notFoundStrategy;
@@ -201,6 +234,7 @@ trait Importer
 
 	/**
 	 * @return Collection<int, array<array-key, mixed>>
+	 * @throws FileException
 	 */
 	public function getData(): Collection
 	{
@@ -216,12 +250,19 @@ trait Importer
 		return $data;
 	}
 
-	/** @param array<array-key, mixed> $item */
+	/**
+	 * Retrieves (if matched) or prepares a new instance of the Element where the imporded item data will be stored
+	 *
+	 * @param array<array-key, mixed> $item
+	 * @throws FoundWhileSkippingException
+	 * @see ImporterInterface::getPrimaryKey
+	 * @see ImporterInterface::getPrimaryKeyValue
+	 */
 	public function getElement(array $item): Entry
 	{
 		$slug = data_get($item, $this->getSlugKey());
 		$title = data_get($item, $this->getTitleKey());
-		$primaryKeyValue = Plugin::getInstance()->getImports()->getPrimaryKeyValue($this, data_get($item, $this->getPrimaryKeyValue()));
+		$primaryKeyValue = Plugin::getInstance()->getImports()->validatePrimaryKeyValue($this, data_get($item, $this->getPrimaryKeyValue()));
 		$primaryKey = $this->getPrimaryKey();
 
 		$element = Entry::find()

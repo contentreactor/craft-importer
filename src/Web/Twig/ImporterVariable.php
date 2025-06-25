@@ -7,11 +7,15 @@ use ContentReactor\Importer\Contracts\Importers\ImporterInterface;
 use ContentReactor\Importer\Plugin;
 use craft\helpers\FileHelper;
 use ReflectionClass;
+use ReflectionException;
 
 class ImporterVariable
 {
 	/**
+	 * Provides registered importer types in Twig
+	 * 
 	 * @return array<int, array{value: class-string<ImporterInterface>, label: string}>
+	 * @throws ReflectionException
 	 */
 	public function getImporterTypes(): array
 	{

@@ -11,7 +11,10 @@ use craft\queue\BaseBatchedJob;
 
 class ImporterJob extends BaseBatchedJob
 {
-	/** @param array<array-key, mixed> $config */
+	/**
+	 * @param ImporterInterface $importer The importer configuration for import
+	 * @param array<array-key, mixed> $config
+	 */
 	public function __construct(
 		public ImporterInterface $importer,
 		public array $config = [],

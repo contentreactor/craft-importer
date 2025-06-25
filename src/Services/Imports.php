@@ -4,12 +4,14 @@ declare(strict_types=1);
 namespace ContentReactor\Importer\Services;
 
 use AXP\FileParser\FileParser;
+use Box\Spout\Reader\Exception\ReaderNotOpenedException;
 use Box\Spout\Common\Entity\{
 	Cell,
 	Row,
 };
 use Box\Spout\Reader\XLSX\Sheet;
 use Cake\Utility\Xml as XmlParser;
+use ContentReactor\Importer\Base\NotFoundStrategy;
 use ContentReactor\Importer\Contracts\Importers\ImporterInterface;
 use ContentReactor\Importer\Events\ParsedContentEvent;
 use ContentReactor\Importer\Importers\BaseFileImporter;
@@ -23,8 +25,11 @@ use craft\helpers\{
 };
 use Illuminate\Support\Collection;
 use League\Csv\{
+	Exception,
+	InvalidArgument,
 	Reader,
 	Statement,
+	SyntaxError
 };
 use yii\base\Event;
 
@@ -42,6 +47,8 @@ class Imports
 	public const FILE_XLS = 'application/vnd.ms-excel';
 
 	/**
+	 * Returns the `Collection` of importers defined in the `config/craft-importer.php` file.
+	 *
 	 * @return Collection<array-key, ImporterInterface>
 	 */
 	public function getImporters(): Collection
@@ -57,7 +64,12 @@ class Imports
 		);
 	}
 
-	/** @return class-string<ImporterInterface>[] */
+	/**
+	 * Returns the array or importer types that are defined in the system.
+	 * Custom importers can be addev via the `EVENT_REGISTER_IMPORTER_TYPES` event
+	 *
+	 * @return class-string<ImporterInterface>[]
+	 */
 	public function getImporterTypes(): array
 	{
 		$event = new RegisterComponentTypesEvent([
@@ -72,9 +84,12 @@ class Imports
 	}
 
 	/**
-	 * @param ImporterInterface $importer
+	 * Parses the content based on the provided configuration
+	 *
+	 * @param ImporterInterface       $importer
 	 * @param array<array-key, mixed> $options
 	 * @return Collection<int, array<array-key, mixed>>
+	 * @throws FileException
 	 */
 	public function getParsedContent(ImporterInterface $importer, array $options = []): Collection
 	{
@@ -90,7 +105,7 @@ class Imports
 	}
 
 	/**
-	 * @param string $jsonPath
+	 * @param string                  $jsonPath
 	 * @param array<array-key, mixed> $options
 	 * @return array<int, array<array-key, mixed>>
 	 */
@@ -108,9 +123,12 @@ class Imports
 	}
 
 	/**
-	 * @param string $csvPath
+	 * @param string                  $csvPath
 	 * @param array<array-key, mixed> $options
 	 * @return array<int, array<array-key, mixed>>
+	 * @throws Exception
+	 * @throws InvalidArgument
+	 * @throws SyntaxError
 	 */
 	protected function parseCsv(string $csvPath, array $options = []): array
 	{
@@ -144,7 +162,7 @@ class Imports
 	}
 
 	/**
-	 * @param string $xmlPath
+	 * @param string                  $xmlPath
 	 * @param array<array-key, mixed> $options
 	 * @return array<int, array<array-key, mixed>>
 	 */
@@ -162,14 +180,14 @@ class Imports
 			'options' => $options,
 		]);
 		Event::trigger(self::class, self::EVENT_AFTER_PARSING_XML_FILE, $event);
-		//$xml = str_ireplace(['ogdwien:', 'gml:'], '', $xml);
 		return $event->content;
 	}
 
 	/**
-	 * @param string $xlsPath
+	 * @param string                  $xlsPath
 	 * @param array<array-key, mixed> $options
 	 * @return array<int, array<array-key, mixed>>
+	 * @throws ReaderNotOpenedException
 	 */
 	protected function parseXls(string $xlsPath, array $options = []): array
 	{
@@ -177,7 +195,7 @@ class Imports
 		$sheet = collect(iterator_to_array($reader->getSheetIterator()))
 			->map(fn(Sheet $sheet): array => iterator_to_array($sheet->getRowIterator()))
 			->flatten(1)
-			->map(fn(Row $row) => array_map(fn (Cell $cell): string => trim($cell->getValue()), $row->getCells()));
+			->map(fn(Row $row) => array_map(fn(Cell $cell): string => trim($cell->getValue()), $row->getCells()));
 		$header = $sheet->first();
 
 		$content = $sheet->reject(fn(array $item): bool => $item[0] === $header[0] || count($header) !== count($item))
@@ -194,19 +212,29 @@ class Imports
 		return $event->content;
 	}
 
-	public function getPrimaryKeyValue(ImporterInterface $importer, string $value): string
+	/**
+	 * Validates the primary key value
+	 *
+	 * @param ImporterInterface $importer
+	 * @param string            $value
+	 * @return string
+	 */
+	public function validatePrimaryKeyValue(ImporterInterface $importer, string $value): string
 	{
 		return $importer->getPrimaryKey() === 'slug' ? ElementHelper::generateSlug($value) : $value;
 	}
 
 	/**
+	 * Identifies the existing elements not included in the imported data
+	 *
 	 * @param ImporterInterface $importer
 	 * @return Collection<int, Entry>
+	 * @see NotFoundStrategy
 	 */
 	public function findMissing(ImporterInterface $importer): Collection
 	{
 		$primaryKeyValues = $importer->getData()->pluck($importer->getPrimaryKeyValue())
-			->map(fn(string $value): string => $this->getPrimaryKeyValue($importer, $value))
+			->map(fn(string $value): string => $this->validatePrimaryKeyValue($importer, $value))
 			->all();
 		$primaryKey = $importer->getPrimaryKey();
 

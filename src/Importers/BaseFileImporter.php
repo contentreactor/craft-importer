@@ -9,7 +9,13 @@ use ContentReactor\Importer\Traits\Importer;
 use Craft;
 use craft\base\ElementInterface;
 use craft\elements\Entry;
+use craft\errors\ElementException;
+use craft\helpers\App;
 
+/**
+ * Base implementation of the `ImporterInterface`
+ * @see Importer
+ */
 class BaseFileImporter implements ImporterInterface
 {
 	use Importer;
@@ -26,20 +32,30 @@ class BaseFileImporter implements ImporterInterface
 		$fieldValue = json_encode($item, JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE);
 		$element->setFieldValue($this->field ?: Plugin::getInstance()->getSettings()->jsonField, $fieldValue);
 		if (!Craft::$app->getElements()->saveElement($element, updateSearchIndex: false)) {
-			Craft::info([
-				$element->title,
-				$element->getErrors(),
-				$item,
-			]);
+			if (App::devMode()) {
+				Craft::error([
+					$element->title,
+					$element->getErrors(),
+					$item,
+				]);
+			}
+			throw new ElementException($element, 'Could not save element');
 		}
 	}
 
+	/**
+	 * Currently not used
+	 *
+	 * @return string
+	 */
 	public function getElementType(): string
 	{
 		return Entry::class;
 	}
 
 	/**
+	 * Currently not used
+	 *
 	 * @param string $primaryKeyValue
 	 * @return ElementInterface
 	 */

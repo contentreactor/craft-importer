@@ -13,6 +13,11 @@ use yii\console\ExitCode;
 
 class ImportsController extends Controller
 {
+	/**
+	 * Console command that should be added to the system cron runner
+	 *
+	 * Can be found at `./craft craft-importer/imports/type-file
+	 */
 	public function actionTypeFile(): int
 	{
 		Plugin::getInstance()->getImports()->getImporters()
@@ -24,6 +29,11 @@ class ImportsController extends Controller
 		return ExitCode::OK;
 	}
 
+	/**
+	 * Console command that should be added to the system cron runner
+	 *
+	 * Can be found at `./craft craft-importer/imports/type-url
+	 */
 	public function actionTypeUrl(): int
 	{
 		Plugin::getInstance()->getImports()->getImporters()

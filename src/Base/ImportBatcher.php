@@ -5,6 +5,9 @@ namespace ContentReactor\Importer\Base;
 
 use craft\base\Batchable;
 
+/**
+ * Provides support for long data imports
+ */
 class ImportBatcher implements Batchable
 {
 	/** @param array<array-key, mixed> $imports */
