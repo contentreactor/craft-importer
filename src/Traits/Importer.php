@@ -17,6 +17,7 @@ use ContentReactor\Importer\Services\Imports;
 use Craft;
 use craft\base\Element;
 use craft\elements\Entry;
+use craft\helpers\ElementHelper;
 use craft\models\{
 	EntryType,
 	Section,
@@ -283,7 +284,7 @@ trait Importer
 		}
 
 		$element->title = $title;
-		$element->slug = $slug;
+		$element->slug = ElementHelper::generateSlug($slug);
 		if ($primaryKey !== 'slug' && $primaryKey !== 'title') {
 			$element->setFieldValue($primaryKey, $primaryKeyValue);
 		}

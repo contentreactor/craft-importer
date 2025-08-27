@@ -14,7 +14,6 @@
 		"craftcms/cms": ">3.9.0",
 		"box/spout": "^3.0",
 		"nystudio107/craft-code-field": "^4",
-		"axp-dev/file-parser": "^2.3",
 		"cakephp/utility": "^3.9",
 		"league/csv": "^8.2"
 	},

@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace ContentReactor\Importer\Services;
 
-use AXP\FileParser\FileParser;
 use Box\Spout\Reader\Exception\ReaderNotOpenedException;
 use Box\Spout\Common\Entity\{
 	Cell,
@@ -11,7 +10,6 @@ use Box\Spout\Common\Entity\{
 };
 use Box\Spout\Reader\XLSX\Sheet;
 use Cake\Utility\Xml as XmlParser;
-use ContentReactor\Importer\Base\NotFoundStrategy;
 use ContentReactor\Importer\Contracts\Importers\ImporterInterface;
 use ContentReactor\Importer\Events\ParsedContentEvent;
 use ContentReactor\Importer\Importers\BaseFileImporter;
@@ -24,6 +22,7 @@ use craft\helpers\{
 	StringHelper,
 };
 use Illuminate\Support\Collection;
+use JsonException;
 use League\Csv\{
 	Exception,
 	InvalidArgument,
@@ -111,7 +110,9 @@ class Imports
 	 */
 	protected function parseJson(string $jsonPath, array $options = []): array
 	{
-		$content = FileParser::json(file_get_contents($jsonPath));
+		$content = json_decode(file_get_contents($jsonPath), true);
+		if (!$content) throw new JsonException('Failed to parse the JSON file.');
+
 		$event = new ParsedContentEvent([
 			'content' => $content,
 			'filePath' => $jsonPath,
@@ -229,7 +230,7 @@ class Imports
 	 *
 	 * @param ImporterInterface $importer
 	 * @return Collection<int, Entry>
-	 * @see NotFoundStrategy
+	 * @see \ContentReactor\Importer\Base\NotFoundStrategy
 	 */
 	public function findMissing(ImporterInterface $importer): Collection
 	{

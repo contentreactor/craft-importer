@@ -22,7 +22,7 @@ interface ImporterInterface
 	 * @return void
 	 * @see getData
 	 */
-	public function import(mixed $item, string $title = '', string $slug = ''): void;
+	public function import(mixed $item): void;
 
 	/**
 	 * Provides the structured data that will be imported

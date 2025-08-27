@@ -20,14 +20,9 @@ class BaseFileImporter implements ImporterInterface
 {
 	use Importer;
 
-	public function import(mixed $item, string $title = '', string $slug = ''): void
+	public function import(mixed $item): void
 	{
-		$slug = $slug ?: $item[$this->getSlugKey()];
-		$title = $title ?: $item[$this->getTitleKey()];
 		$element = $this->getElement($item);
-
-		$element->title = $title;
-		$element->slug = $slug;
 
 		$fieldValue = json_encode($item, JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE);
 		$element->setFieldValue($this->field ?: Plugin::getInstance()->getSettings()->jsonField, $fieldValue);
