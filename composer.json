@@ -11,13 +11,13 @@
 		"rss": "https://github.com/contentreactor/craft-importer/releases.atom"
 	},
 	"require": {
-		"craftcms/cms": ">3.9.0",
+		"craftcms/cms": "^5.0",
 		"box/spout": "^3.0",
-		"nystudio107/craft-code-field": "^4",
+		"nystudio107/craft-code-field": "^5.0",
 		"cakephp/utility": "^3.9",
 		"league/csv": "^8.2"
 	},
-	"version": "1.0.0",
+	"version": "2.0.0",
 	"require-dev": {
 		"friendsofphp/php-cs-fixer": "^3.54",
 		"developion/coding-standards": "^1.1",

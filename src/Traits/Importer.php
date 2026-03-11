@@ -3,20 +3,20 @@ declare(strict_types=1);
 
 namespace ContentReactor\Importer\Traits;
 
-use ContentReactor\Importer\Contracts\Importers\ImporterInterface;
-use craft\errors\ElementNotFoundException;
-use craft\errors\FileException;
 use ContentReactor\Importer\Base\{
 	FoundStrategy,
 	ImporterType,
 	NotFoundStrategy,
 };
+use ContentReactor\Importer\Contracts\Importers\ImporterInterface;
 use ContentReactor\Importer\Errors\FoundWhileSkippingException;
 use ContentReactor\Importer\Plugin;
 use ContentReactor\Importer\Services\Imports;
 use Craft;
 use craft\base\Element;
 use craft\elements\Entry;
+use craft\errors\ElementNotFoundException;
+use craft\errors\FileException;
 use craft\helpers\ElementHelper;
 use craft\models\{
 	EntryType,
@@ -30,27 +30,27 @@ use yii\base\InvalidConfigException;
 trait Importer
 {
 	/**
-	 * @param string|Section          $section Section where the stored content is being saved
-	 * @param string|EntryType        $entryType Entry Type where the stored content is being saved. If left empty, the first type of the Section is used
-	 * @param string|ImporterType     $importerType Specifies the type of source. The available options are:
+	 * @param string|Section $section Section where the stored content is being saved
+	 * @param string|EntryType $entryType Entry Type where the stored content is being saved. If left empty, the first type of the Section is used
+	 * @param string|ImporterType $importerType Specifies the type of source. The available options are:
 	 *
 	 *  - `fileImporter` - The [[$filePath]] expects a local file path
 	 *  - `urlImporter` - The [[$filePath]] expects a remote url. This is the default option
 	 *  - `uploadImporter` - This option is used in the background for dashboard uploads
 	 *
 	 * Each of the listed options can be referenced by a case of ImporterType enum
-	 * @param string                  $filePath A path/url of the imported file. The value must always be an absolute path. Aliases can be used
-	 * @param string                  $fileType Valid MIME type of the imported file. Allowed types are:
+	 * @param string $filePath A path/url of the imported file. The value must always be an absolute path. Aliases can be used
+	 * @param string $fileType Valid MIME type of the imported file. Allowed types are:
 	 *
 	 *  - \ContentReactor\Importer\Services\Imports::FILE_JSON
 	 *  - \ContentReactor\Importer\Services\Imports::FILE_XML
 	 *  - \ContentReactor\Importer\Services\Imports::FILE_CSV
 	 *  - \ContentReactor\Importer\Services\Imports::FILE_XLS
-	 * @param string                  $dataPath Defines the dot-separated path to the content within the parsed data, eg. 'rss.channel.item', 'data.content'.
+	 * @param string $dataPath Defines the dot-separated path to the content within the parsed data, eg. 'rss.channel.item', 'data.content'.
 	 *
 	 * If left empty, it assumes the content is in the root of the file
 	 *
-	 * @param string|FoundStrategy    $foundStrategy Specifies the way to handle matched elements. The available options are:
+	 * @param string|FoundStrategy $foundStrategy Specifies the way to handle matched elements. The available options are:
 	 *
 	 *  - `overwrite` - If found, updates the contents of the element. This is the default option
 	 *  - `skip` - If found, element is left untouched
@@ -63,11 +63,11 @@ trait Importer
 	 *  - `delete` - If an existing element doesn't match to any newly imported ones, it is deleted.
 	 *
 	 *   Each of the listed options can be referenced by a case of NotFoundStrategy enum
-	 * @param string                  $primaryKey Defines the attribute or field handle of the saved elements which is used to match the existing content
-	 * @param string                  $primaryKeyValue Defines the dot-separated array key in individual data items which is used with [[$primaryKey]] to match the existing content
-	 * @param string                  $slugKey Defines the dot-separated array key in individual data items which will be used for the slug of the saved element
-	 * @param string                  $titleKey Defines the dot-separated array key in individual data items which will be used for the title of the saved element
-	 * @param string                  $field Defines the handle of the field where the contents are stored. If left empty, it uses the globally configured field
+	 * @param string $primaryKey Defines the attribute or field handle of the saved elements which is used to match the existing content
+	 * @param string $primaryKeyValue Defines the dot-separated array key in individual data items which is used with [[$primaryKey]] to match the existing content
+	 * @param string $slugKey Defines the dot-separated array key in individual data items which will be used for the slug of the saved element
+	 * @param string $titleKey Defines the dot-separated array key in individual data items which will be used for the title of the saved element
+	 * @param string $field Defines the handle of the field where the contents are stored. If left empty, it uses the globally configured field
 	 * @throws ElementNotFoundException
 	 * @throws Exception
 	 * @throws InvalidConfigException
@@ -94,6 +94,14 @@ trait Importer
 		}
 
 		$this->applyNotFoundStrategy();
+	}
+
+	public function getType(): ImporterType
+	{
+		$type = $this->importerType;
+		if ($type instanceof ImporterType) return $type;
+
+		return ImporterType::from($this->importerType);
 	}
 
 	/**
@@ -129,84 +137,6 @@ trait Importer
 		}
 	}
 
-	/** @inheritDoc */
-	public function getSection(): Section
-	{
-		if ($this->section instanceof Section) {
-			return $this->section;
-		}
-
-		return Craft::$app->getSections()
-			->getSectionByHandle($this->section);
-	}
-
-	/** @inheritDoc */
-	public function getEntryType(): EntryType
-	{
-		if ($this->entryType instanceof EntryType) {
-			return $this->entryType;
-		}
-
-		$section = $this->getSection();
-		$entryTypes = collect($section->getEntryTypes());
-		$entryType = $entryTypes->first(function (EntryType $entryType): bool {
-			return $entryType->handle === $this->entryType;
-		});
-
-		if (!$entryType) {
-			$entryType = $entryTypes->first();
-		}
-
-		return $entryType;
-	}
-
-	public function getFieldName(): string
-	{
-		return $this->field ?: Plugin::getInstance()->getSettings()->jsonField;
-	}
-
-	public function getSlugKey(): string
-	{
-		return $this->slugKey;
-	}
-
-	public function getTitleKey(): string
-	{
-		return $this->titleKey;
-	}
-
-	public function getPrimaryKey(): string
-	{
-		return $this->primaryKey ?: 'slug';
-	}
-
-	public function getPrimaryKeyValue(): string
-	{
-		return $this->primaryKeyValue ?: 'slug';
-	}
-
-	public function getType(): ImporterType
-	{
-		$type = $this->importerType;
-		if ($type instanceof ImporterType) return $type;
-
-		return ImporterType::from($this->importerType);
-	}
-
-	/**
-	 * Returns how the matched elements are handled
-	 * @return FoundStrategy
-	 * @see FoundStrategy::OVERWRITE
-	 * @see FoundStrategy::SKIP
-	 */
-	public function getFoundStrategy(): FoundStrategy
-	{
-		$strategy = $this->foundStrategy;
-		if ($strategy instanceof FoundStrategy) return $strategy;
-
-		return FoundStrategy::from($this->foundStrategy);
-	}
-
 	/**
 	 * Returns how to handle the elements not found in the imported data
 	 *
@@ -221,6 +151,25 @@ trait Importer
 		if ($strategy instanceof NotFoundStrategy) return $strategy;
 
 		return NotFoundStrategy::from($this->notFoundStrategy);
+	}
+
+	public function getFieldName(): string
+	{
+		return $this->field ?: Plugin::getInstance()->getSettings()->jsonField;
+	}
+
+	/**
+	 * Returns how the matched elements are handled
+	 * @return FoundStrategy
+	 * @see FoundStrategy::OVERWRITE
+	 * @see FoundStrategy::SKIP
+	 */
+	public function getFoundStrategy(): FoundStrategy
+	{
+		$strategy = $this->foundStrategy;
+		if ($strategy instanceof FoundStrategy) return $strategy;
+
+		return FoundStrategy::from($this->foundStrategy);
 	}
 
 	public function getFilePath(): string
@@ -290,5 +239,56 @@ trait Importer
 		}
 
 		return $element;
+	}
+
+	public function getSlugKey(): string
+	{
+		return $this->slugKey;
+	}
+
+	public function getTitleKey(): string
+	{
+		return $this->titleKey;
+	}
+
+	public function getPrimaryKeyValue(): string
+	{
+		return $this->primaryKeyValue ?: 'slug';
+	}
+
+	public function getPrimaryKey(): string
+	{
+		return $this->primaryKey ?: 'slug';
+	}
+
+	/** @inheritDoc */
+	public function getSection(): Section
+	{
+		if ($this->section instanceof Section) {
+			return $this->section;
+		}
+
+		return Craft::$app->getEntries()
+			->getSectionByHandle($this->section);
+	}
+
+	/** @inheritDoc */
+	public function getEntryType(): EntryType
+	{
+		if ($this->entryType instanceof EntryType) {
+			return $this->entryType;
+		}
+
+		$section = $this->getSection();
+		$entryTypes = collect($section->getEntryTypes());
+		$entryType = $entryTypes->first(function (EntryType $entryType): bool {
+			return $entryType->handle === $this->entryType;
+		});
+
+		if (!$entryType) {
+			$entryType = $entryTypes->first();
+		}
+
+		return $entryType;
 	}
 }

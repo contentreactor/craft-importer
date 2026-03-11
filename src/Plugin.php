@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace ContentReactor\Importer;
 
 use ContentReactor\Importer\Models\Settings;
+use ContentReactor\Importer\Web\Twig\Extension;
 use ContentReactor\Importer\Services\{
 	Imports as ImportsService,
 	Spreadsheets as SpreadsheetsService,
@@ -71,7 +72,35 @@ class Plugin extends BasePlugin
 			Craft::setAlias('@importer', __DIR__);
 		});
 
+		Craft::$app->getView()->registerTwigExtension(new Extension);
 		$this->attachEventHandlers();
+	}
+
+	protected function attachEventHandlers(): void
+	{
+		Event::on(
+			Utilities::class,
+			Utilities::EVENT_REGISTER_UTILITIES,
+			static function (RegisterComponentTypesEvent $event): void {
+				$event->types[] = Importer::class;
+			},
+		);
+
+		Event::on(
+			View::class,
+			View::EVENT_REGISTER_CP_TEMPLATE_ROOTS,
+			static function (RegisterTemplateRootsEvent $event): void {
+				$event->roots['craft-importer'] = __DIR__ . '/Templates';
+			},
+		);
+
+		Event::on(
+			CraftVariable::class,
+			CraftVariable::EVENT_INIT,
+			function (Event $event): void {
+				$event->sender->set('importer', ImporterVariable::class);
+			},
+		);
 	}
 
 	protected function createSettingsModel(): ?Model
@@ -85,32 +114,5 @@ class Plugin extends BasePlugin
 			'plugin' => $this,
 			'settings' => $this->getSettings(),
 		]);
-	}
-
-	protected function attachEventHandlers(): void
-	{
-		Event::on(
-			Utilities::class,
-			Utilities::EVENT_REGISTER_UTILITY_TYPES,
-			static function (RegisterComponentTypesEvent $event): void {
-				$event->types[] = Importer::class;
-			}
-		);
-
-		Event::on(
-			View::class,
-			View::EVENT_REGISTER_CP_TEMPLATE_ROOTS,
-			static function (RegisterTemplateRootsEvent $event): void {
-				$event->roots['craft-importer'] = __DIR__ . '/Templates';
-			}
-		);
-
-		Event::on(
-			CraftVariable::class,
-			CraftVariable::EVENT_INIT,
-			function (Event $event): void {
-				$event->sender->set('importer', ImporterVariable::class);
-			}
-		);
 	}
 }
